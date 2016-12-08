@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<plugin xmlns="http://www.phonegap.com/ns/plugins/1.0"
+        id="edu.berkeley.eecs.emission.cordova.transitionnotify"
+        version="0.0.1">
+
+  <name>TransitionNotification</name>
+  <description>Transition notification. Specially good for trip start and trip end notifications </description>
+  <author>K. Shankari (shankari@eecs.berkeley.edu)</author>
+  <license>Modified BSD license</license>
+
+  <engines>
+    <engine name="cordova" version=">=3.6.0"/>
+  </engines>
+
+  <asset src="www/transitionnotify.js" target="js/transitionnotify.js"/>
+
+  <js-module src="www/transitionnotify.js" name="transitionnotify">
+    <clobbers target="cordova.plugins.BEMTransitionNotification" />
+  </js-module>
+
+  <!--
+    Dependency checking on iOS does not work well - if the same dependency
+    exists in multiple files, it inserts them over and over and finally fails
+
+  <dependency id="edu.berkeley.eecs.emission.cordova.unifiedlogger"
+                url="https://github.com/e-mission/cordova-unified-logger.git"/>
+  <dependency id="edu.berkeley.eecs.emission.cordova.settings"
+                url="https://github.com/e-mission/cordova-connection-settings.git"/>
+  <dependency id="edu.berkeley.eecs.emission.cordova.serversync"
+                url="https://github.com/e-mission/cordova-server-sync.git"/>
+  -->
+
+  <platform name="android">
+
+    <config-file target="res/xml/config.xml" parent="/*">
+      <feature name="TransitionNotification">
+        <param name="android-package" value="edu.berkeley.eecs.emission.cordova.transitionnotify.TransitionNotifier"/>
+      </feature>
+    </config-file>
+
+    <config-file target="AndroidManifest.xml" parent="/manifest/application">
+        <receiver
+            android:name="edu.berkeley.eecs.emission.cordova.transitionnotify.TransitionNotificationReceiver"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="local.transition.initialize"></action>
+                <action android:name="local.transition.exited_geofence"></action>
+                <action android:name="local.transition.stopped_moving"></action>
+                <action android:name="local.transition.stop_tracking"></action>
+                <action android:name="local.transition.start_tracking"></action>
+            </intent-filter>
+        </receiver>
+    </config-file>
+
+    <source-file src="src/android/TransitionNotifier.java" target-dir="src/edu/berkeley/eecs/emission/cordova/transitionnotify"/>
+    <source-file src="src/android/TransitionNotificationReceiver.java" target-dir="src/edu/berkeley/eecs/emission/cordova/transitionnotify"/>
+    <resource-file src="res/android/statemachine.xml" target="res/values/statemachine.xml" />
+  </platform>
+
+  <platform name="ios">
+    
+    <config-file target="config.xml" parent="/*">
+      <feature name="TransitionNotification">
+        <param name="ios-package" value="BEMTransitionNotifier" />
+      </feature>
+    </config-file>
+
+    <header-file src="src/ios/BEMTransitionNotifier.h"/>
+    <source-file src="src/ios/BEMTransitionNotifier.m"/>
+  </platform>
+</plugin>
