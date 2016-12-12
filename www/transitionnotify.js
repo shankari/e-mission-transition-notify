@@ -16,6 +16,8 @@ var exec = require("cordova/exec")
  */
 
 var TransitionNotification = {
+    TRIP_END: 'trip_ended',
+
     addEventListener: function(eventName, notifyOptions) {
         return new Promise(function(resolve, reject) {
             exec(resolve, reject, "TransitionNotification", "addEventListener", [eventName, notifyOptions]);
@@ -33,12 +35,7 @@ var TransitionNotification = {
      * Invoked only from the iOS native code.
      */
     dispatchIOSLocalNotification: function(noteOpt) {
-        // category and actions required 
-        // https://github.com/e-mission/e-mission-phone/issues/191#issuecomment-265659578
-        noteOpt.category = "TEST_CATEGORY";
-        noteOpt.actions = [];
         console.log("About to dispatch "+JSON.stringify(noteOpt));
-        // console.log("notification plugin = "+JSON.stringify(window.cordova.plugins.notification.local));
         window.cordova.plugins.notification.local.schedule(noteOpt);
     }
 }
