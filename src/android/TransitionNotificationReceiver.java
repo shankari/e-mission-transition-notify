@@ -33,6 +33,8 @@ import de.appplant.cordova.plugin.notification.Manager;
  */
 import edu.berkeley.eecs.emission.R;
 import edu.berkeley.eecs.emission.cordova.unifiedlogger.Log;
+import edu.berkeley.eecs.emission.cordova.usercache.UserCache;
+import edu.berkeley.eecs.emission.cordova.usercache.UserCacheFactory;
 
 public class TransitionNotificationReceiver extends BroadcastReceiver {
 
@@ -41,8 +43,12 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
 
     public static final String EVENTNAME_ERROR = "event name null or empty.";
 
-    java.util.Map<String,BroadcastReceiver> receiverMap =
-                    new java.util.HashMap<String,BroadcastReceiver>(10);
+    private static final String TRIP_STARTED = "trip_started";
+    private static final String TRIP_ENDED = "trip_ended";
+    private static final String TRACKING_STARTED = "tracking_started";
+    private static final String TRACKING_STOPPED = "tracking_stopped";
+
+    private static final String CONFIG_LIST_KEY = "config_list";
 
     public TransitionNotificationReceiver() {
         // The automatically created receiver needs a default constructor
@@ -72,194 +78,67 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
             Log.e(context, TAG, "Received unknown action "+intent.getAction()+" ignoring");
             return;
         }
-        fireEvent(context, intent.getAction(), new JSONObject());
+        fireGenericTransition(context, intent.getAction(), new JSONObject());
     }
 
     /**
      * @param context
      * @param eventName
-     * @param jsonData
+     * @param userInfo
      * @throws JSONException
      */
-    protected void fireEvent( final Context context, final String eventName, final JSONObject jsonData) {
-        try {
-        JSONObject testObject = new JSONObject("{'id': 737679," +
-                "'title': 'Direct through plugin'," +
-                "'text': 'Incident to report?'}");
-        testObject.put("data", jsonData);
-            Manager.getInstance(context).schedule(testObject, TriggerReceiver.class);
+    protected void fireGenericTransition( final Context context, final String eventName,
+                                          final JSONObject userInfo) {
+        Log.d(context, TAG, "Received platform-specification notification "+eventName);
+        if (eventName.equals(context.getString(R.string.transition_exited_geofence))) {
+            postNativeAndNotify(context, TRIP_STARTED);
+    }
+
+        if (eventName.equals(context.getString(R.string.transition_stopped_moving))) {
+            postNativeAndNotify(context, TRIP_ENDED);
+        }
+
+        if (eventName.equals(context.getString(R.string.transition_stop_tracking))) {
+            postNativeAndNotify(context, TRACKING_STOPPED);
+        }
+
+        if (eventName.equals(context.getString(R.string.transition_start_tracking))) {
+            postNativeAndNotify(context, TRACKING_STARTED);
+    }
+            }
+
+    public void postNativeAndNotify(Context context, String genericTransition) {
+        Log.d(context, TAG, "Broadcasting generic transition "+genericTransition
+                +" and generating notification");
+        Intent genericTransitionIntent = new Intent();
+        genericTransitionIntent.setAction(genericTransition);
+        context.sendBroadcast(genericTransitionIntent);
+        notifyEvent(context, genericTransition, null);
+            }
+
+    public void notifyEvent(Context context, String eventName, JSONObject jsonData) {
+        Log.d(context, TAG, "Generating all notifications for generic "+eventName);
+                        try {
+            JSONObject notifyConfigWrapper = UserCacheFactory.getUserCache(context).getLocalStorage(eventName, false);
+            if (notifyConfigWrapper == null) {
+                Log.d(context, TAG, "no configuration found for event "+eventName+", skipping notification");
+                return;
+        }
+            JSONArray notifyConfigs = notifyConfigWrapper.getJSONArray(CONFIG_LIST_KEY);
+            for(int i = 0; i < notifyConfigs.length(); i++) {
+               try {
+                   JSONObject currNotifyConfig = notifyConfigs.getJSONObject(i);
+                   Log.d(context, TAG, "generating notification for event "+eventName
+                           +" and id = "+currNotifyConfig.getLong("id"));
+                   Manager.getInstance(context).schedule(currNotifyConfig, TriggerReceiver.class);
+               } catch (Exception e) {
+                   Log.e(context, TAG, "Got error "+e.getMessage()+" while processing object "
+                           + notifyConfigs.getJSONObject(i) + " at index "+i);
+    }
+                    }
         } catch(JSONException e) {
             Log.e(context, TAG, e.getMessage());
             Log.e(context, TAG, e.toString());
-        }
-    }
-
-    /*
-    protected void registerReceiver(android.content.BroadcastReceiver receiver, android.content.IntentFilter filter) {
-        LocalBroadcastManager.getInstance(super.webView.getContext()).registerReceiver(receiver,filter);
-    }
-
-    protected void unregisterReceiver(android.content.BroadcastReceiver receiver) {
-        LocalBroadcastManager.getInstance(super.webView.getContext()).unregisterReceiver(receiver);
-    }
-
-    protected boolean sendBroadcast(android.content.Intent intent) {
-        return LocalBroadcastManager.getInstance(super.webView.getContext()).sendBroadcast(intent);
-    }
-
-    @Override
-    public Object onMessage(String id, Object data) {
-
-        try {
-            fireEvent( id, data );
-        } catch (JSONException e) {
-            Log.e(TAG, String.format("userdata [%s] for event [%s] is not a valid json object!", data, id));
-            return Boolean.FALSE;
-        }
-        return Boolean.TRUE;
-    }
-
-    private void fireNativeEvent( final String eventName, JSONObject userData ) {
-        if( eventName == null ) {
-            throw new IllegalArgumentException("eventName parameter is null!");
-        }
-
-        final Intent intent = new Intent(eventName);
-
-        if( userData != null ) {
-            Bundle b = new Bundle();
-            b.putString(USERDATA, userData.toString());
-            intent.putExtras(b);
-        }
-
-        sendBroadcast( intent );
-    }
-    */
-
-    /**
-     *
-     * @param action          The action to execute.
-     * @param args            The exec() arguments.
-     * @param callbackContext The callback context used when calling back into JavaScript.
-     * @return
-     * @throws JSONException
-     */
-    /*
-    @Override
-    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
-        if( action.equals("fireNativeEvent")) {
-
-            final String eventName = args.getString(0);
-            if( eventName==null || eventName.isEmpty() ) {
-                callbackContext.error(EVENTNAME_ERROR);
-
-            }
-            final JSONObject userData = args.getJSONObject(1);
-
-
-            cordova.getThreadPool().execute(new Runnable() {
-                @Override
-                public void run() {
-                    fireNativeEvent(eventName, userData);
-                }
-            });
-
-            callbackContext.success();
-            return true;
-        }
-        else if (action.equals("addEventListener")) {
-
-            final String eventName = args.getString(0);
-            if (eventName == null || eventName.isEmpty()) {
-                callbackContext.error(EVENTNAME_ERROR);
-                return false;
-            }
-            if (!receiverMap.containsKey(eventName)) {
-
-                final BroadcastReceiver r = new BroadcastReceiver() {
-
-                    @Override
-                    public void onReceive(Context context, final Intent intent) {
-
-                        final Bundle b = intent.getExtras();
-
-                        // parse the JSON passed as a string.
-                        try {
-
-                            String userData = "{}";
-                            if (b != null) {//  in some broadcast there might be no extra info
-                                userData = b.getString(USERDATA, "{}");
-                            } else {
-                                Log.v(TAG, "No extra information in intent bundle");
-                            }
-                            fireEvent(eventName, userData);
-
-                        } catch (JSONException e) {
-                            Log.e(TAG, "'userdata' is not a valid json object!");
-                        }
-
-                    }
-                };
-
-                registerReceiver(r, new IntentFilter(eventName));
-
-                receiverMap.put(eventName, r);
-            }
-            callbackContext.success();
-
-            return true;
-        } else if (action.equals("removeEventListener")) {
-
-            final String eventName = args.getString(0);
-            if (eventName == null || eventName.isEmpty()) {
-                callbackContext.error(EVENTNAME_ERROR);
-                return false;
-            }
-
-            BroadcastReceiver r = receiverMap.remove(eventName);
-
-            if (r != null) {
-
-                unregisterReceiver(r);
-
-
-            }
-            callbackContext.success();
-            return true;
-        }
-        return false;
-    }
-    */
-
-    /**
-     *
-     */
-    /*
-    @Override
-    public void onDestroy() {
-        // deregister receiver
-        for( BroadcastReceiver r : receiverMap.values() ) {
-                    unregisterReceiver(r);
-        }
-
-        receiverMap.clear();
-
-        super.onDestroy();
-
-    }
-
-    @TargetApi(Build.VERSION_CODES.KITKAT)
-    private void sendJavascript(final String javascript) {
-        webView.getView().post(new Runnable() {
-           @Override
-           public void run() {
-               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                    webView.sendJavascript(javascript);
-                   } else {
-                    webView.loadUrl("javascript:".concat(javascript));
-                    }
                }
-            });
     }
-    */
 }

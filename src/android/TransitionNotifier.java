@@ -8,7 +8,6 @@ import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Log;
 import android.webkit.ValueCallback;
 
 import org.apache.cordova.CordovaPlugin;
@@ -17,6 +16,10 @@ import org.apache.cordova.CallbackContext;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import edu.berkeley.eecs.emission.BuildConfig;
+import edu.berkeley.eecs.emission.cordova.unifiedlogger.Log;
+import edu.berkeley.eecs.emission.cordova.usercache.UserCacheFactory;
 
 /**
  * This class echoes a string called from JavaScript.
@@ -27,22 +30,43 @@ public class TransitionNotifier extends CordovaPlugin {
     private static String TAG =  TransitionNotifier.class.getSimpleName();
 
     public static final String EVENTNAME_ERROR = "event name null or empty.";
+    public static final String CONFIG_ERROR = "config name null or empty.";
+
+    private static final String CONFIG_LIST_KEY = "config_list";
+    private static final String ID = "id";
 
     java.util.Map<String,BroadcastReceiver> receiverMap =
                     new java.util.HashMap<String,BroadcastReceiver>(10);
 
     @Override
     public Object onMessage(String id, Object data) {
-/*
-        try {
-            fireEvent( id, data );
-        } catch (JSONException e) {
-            Log.e(TAG, String.format("userdata [%s] for event [%s] is not a valid json object!", data, id));
-            return Boolean.FALSE;
+        Log.d(cordova.getActivity(), TAG, "Received onMessage with id = "+id+" and data = "+data);
+        return Boolean.TRUE;
+    }
+
+    private int findEntryWithId(JSONArray array, long id) throws JSONException {
+        for (int i = 0; i < array.length(); i++) {
+           JSONObject currCheckedObject = array.getJSONObject(i);
+            if (currCheckedObject.getLong(ID) == id) {
+                return i;
+            }
         }
-        return Boolean.TRUE;
-        */
-        return Boolean.TRUE;
+        return -1;
+    }
+
+    private JSONArray filterNulls(Context context, JSONArray unfilteredArray) {
+        JSONArray filteredArray = new JSONArray();
+        for (int i = 0; i < unfilteredArray.length(); i++) {
+            if (!unfilteredArray.isNull(i)) {
+                try {
+                    filteredArray.put(unfilteredArray.get(i));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    Log.e(context, TAG, "Skipped entry at index " + i+ " because of "+e.getMessage());
+                }
+            }
+        }
+        return filteredArray;
     }
 
     /**
@@ -55,64 +79,55 @@ public class TransitionNotifier extends CordovaPlugin {
      */
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
-        if( action.equals("fireNativeEvent")) {
+        Context ctxt = cordova.getActivity();
+        if (action.equals("addEventListener")) {
 
             final String eventName = args.getString(0);
             if( eventName==null || eventName.isEmpty() ) {
                 callbackContext.error(EVENTNAME_ERROR);
-
-            }
-            final JSONObject userData = args.getJSONObject(1);
-
-
-            cordova.getThreadPool().execute(new Runnable() {
-                @Override
-                public void run() {
-                    // fireNativeEvent(eventName, userData);
-                }
-            });
-
-            callbackContext.success();
-            return true;
+                return false;
         }
-        else if (action.equals("addEventListener")) {
 
-            final String eventName = args.getString(0);
-            if (eventName == null || eventName.isEmpty()) {
-                callbackContext.error(EVENTNAME_ERROR);
+            final JSONObject localNotifyConfig = args.getJSONObject(1);
+            if (localNotifyConfig == null || localNotifyConfig.length() == 0) {
+                callbackContext.error(CONFIG_ERROR);
                 return false;
             }
-            if (!receiverMap.containsKey(eventName)) {
 
-                final BroadcastReceiver r = new BroadcastReceiver() {
+            JSONObject configWrapper = UserCacheFactory.getUserCache(ctxt).getLocalStorage(eventName, false);
+            JSONArray currList;
 
-                    @Override
-                    public void onReceive(Context context, final Intent intent) {
-
-                        final Bundle b = intent.getExtras();
-
-                        // parse the JSON passed as a string.
-                        try {
-
-                            String userData = "{}";
-                            if (b != null) {//  in some broadcast there might be no extra info
-                                userData = b.getString(USERDATA, "{}");
+            if (configWrapper == null) {
+                configWrapper = new JSONObject();
+                currList = new JSONArray();
+                configWrapper.put(CONFIG_LIST_KEY, currList);
                             } else {
-                                Log.v(TAG, "No extra information in intent bundle");
+                currList = configWrapper.getJSONArray(CONFIG_LIST_KEY);
                             }
-                            // fireEvent(eventName, userData);
-                            throw new JSONException("Get this to compile now");
 
-                        } catch (JSONException e) {
-                            Log.e(TAG, "'userdata' is not a valid json object!");
+            if(BuildConfig.DEBUG) {
+                assert(configWrapper != null && currList != null &&
+                        configWrapper.getJSONArray(CONFIG_LIST_KEY) == currList);
                         }
 
-                    }
-                };
+            int existingIndex = findEntryWithId(currList, localNotifyConfig.getLong(ID));
 
-                // registerReceiver(r, new IntentFilter(eventName));
+            boolean modified = true;
+            if (existingIndex == -1) {
+                Log.d(ctxt, TAG, "new configuration, adding object with id "+localNotifyConfig.getLong(ID));
+                currList.put(localNotifyConfig);
+            } else {
+                if (localNotifyConfig.equals(currList.getJSONObject(existingIndex))) {
+                    Log.d(ctxt, TAG, "configuration unchanged, skipping list modify");
+                    modified = false;
+                } else {
+                    Log.d(ctxt, TAG, "configuration changed, changing object at index "+existingIndex);
+                    currList.put(existingIndex, localNotifyConfig);
+                }
+            }
 
-                receiverMap.put(eventName, r);
+            if (modified) {
+                UserCacheFactory.getUserCache(ctxt).putLocalStorage(eventName, configWrapper);
             }
             callbackContext.success();
 
@@ -125,33 +140,35 @@ public class TransitionNotifier extends CordovaPlugin {
                 return false;
             }
 
-            BroadcastReceiver r = receiverMap.remove(eventName);
-
-            if (r != null) {
-
-                // unregisterReceiver(r);
-
-
+            final JSONObject localNotifyConfig = args.getJSONObject(1);
+            if (localNotifyConfig == null || localNotifyConfig.length() == 0) {
+                callbackContext.error(CONFIG_ERROR);
+                return false;
             }
+
+            JSONObject configWrapper = UserCacheFactory.getUserCache(ctxt).getLocalStorage(eventName, false);
+
+            if (configWrapper != null) { // There is an existing entry for this event
+                JSONArray currList = configWrapper.getJSONArray(CONFIG_LIST_KEY);
+                int existingIndex = findEntryWithId(currList, localNotifyConfig.getLong(ID));
+                if (existingIndex != -1) { // There is an existing entry for this ID
+                    Log.d(ctxt, TAG, "removed obsolete notification at " + existingIndex);
+                    // Should be replaced by remove once we move our minApi version up
+                    currList.put(existingIndex, null);
+                    currList = filterNulls(ctxt, currList);
+                    if (currList.length() == 0) { // list size is now zero, can remove the entry
+                       Log.d(ctxt, TAG, "list size is now, zero, removing entry for event "+eventName);
+                       UserCacheFactory.getUserCache(ctxt).removeLocalStorage(eventName);
+                    } else {
+                        Log.d(ctxt, TAG, "saving list with size "+currList.length());
+                        UserCacheFactory.getUserCache(ctxt).putLocalStorage(eventName, configWrapper);
+                    }
+            }
+            }
+
             callbackContext.success();
             return true;
         }
         return false;
-    }
-
-    /**
-     *
-     */
-    @Override
-    public void onDestroy() {
-        // deregister receiver
-        for( BroadcastReceiver r : receiverMap.values() ) {
-                    // unregisterReceiver(r);
-        }
-
-        receiverMap.clear();
-
-        super.onDestroy();
-
     }
 }

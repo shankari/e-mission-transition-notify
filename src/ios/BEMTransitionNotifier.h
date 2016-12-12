@@ -4,7 +4,5 @@
 
 @interface BEMTransitionNotifier : CDVPlugin
 
-- (void)pluginInitialize;
-
 @end
 
