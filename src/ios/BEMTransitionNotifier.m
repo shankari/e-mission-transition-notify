@@ -205,7 +205,7 @@ static inline void throwWithName( NSError *error, NSString* name )
                 [LocalNotificationManager addNotification:[NSString stringWithFormat:@"list size is now 0, removing entry for event %@", eventName]];
                 [[BuiltinUserCache database] removeLocalStorage:eventName];
             } else {
-                [LocalNotificationManager addNotification:[NSString stringWithFormat:@"saving list with size %lu", [currList count]];
+                [LocalNotificationManager addNotification:[NSString stringWithFormat:@"saving list with size %lu", [currList count]]];
                 [[BuiltinUserCache database] putLocalStorage:eventName jsonValue:configWrapper];
             }
         }
