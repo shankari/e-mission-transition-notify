@@ -159,29 +159,32 @@
                   startTransitionPointer:&startTransition
             beforeStartTransitionPointer:&beforeStartTransition];
 
-    NSArray* firstLocArray = [self getFirstLocation:startTransition];
-    NSAssert([firstLocArray count] > 0, @"Found no locations while ending trip!");
-    SimpleLocation* firstLoc = firstLocArray[0];
+    SimpleLocation* firstLoc = [self getFirstPoint:startTransition];
+    NSAssert(firstLoc != NULL, @"firstLoc = NULL, cannot set!");
     retData[@"start_ts"] = @(firstLoc.ts);
     retData[@"start_lat"] = @(firstLoc.latitude);
     retData[@"start_lng"] = @(firstLoc.longitude);
     return retData;
 }
 
-- (NSArray*) getFirstLocation:(Transition*)startTransition
+- (SimpleLocation*) getFirstPoint:(Transition*)startTransition
 {
     // Handle the case that the startTransition has already been pushed (due to races)
     // or was never created (due to turning on geofencing)
     if (startTransition == NULL) {
-        return [[BuiltinUserCache database]
+        // No start transition, return oldest location
+        NSArray* firstLocArray = [[BuiltinUserCache database]
                                   getFirstSensorData:@"key.usercache.filtered_location"
                                   nEntries:1
                                   wrapperClass:[SimpleLocation class]];
+        NSAssert([firstLocArray count] > 0, @"Found no locations while ending trip!");
+        return firstLocArray[0];
     } else {
+        // Find points around the start transition
         TimeQuery* tq = [TimeQuery new];
         tq.key = [[BuiltinUserCache database] getStatName:@"metadata.usercache.write_ts"];
-        tq.startTs = 0;
-        tq.endTs = startTransition.ts;
+        tq.startTs = startTransition.ts - 5 * 60; // 5 minutes before
+        tq.endTs = startTransition.ts + 5 * 60; // 5 minutes after
 
         NSArray* firstLocArray = [[BuiltinUserCache database]
                                  getSensorDataForInterval:@"key.usercache.filtered_location"
@@ -198,8 +201,42 @@
             SimpleLocation* firstLoc = firstLocArray[0];
             NSAssert(firstLoc.ts > startTransition.ts, @"firstLocArray[0].ts (%f) < startTransition.ts (%f)",
                      firstLoc.ts, startTransition.ts);
+            return firstLoc;
+        } else {
+            // There are points around the start transition.
+            // Return the last point before (preferable) or the first point after
+            NSMutableArray* beforePoints = [NSMutableArray new];
+            NSMutableArray* equalOrAfterPoints = [NSMutableArray new];
+            [self splitArray:firstLocArray
+                               atTs:startTransition.ts
+                       beforePoints:beforePoints
+                        afterPoints:equalOrAfterPoints];
+            
+            NSAssert([beforePoints count] > 0 || [equalOrAfterPoints count] > 0,
+                     @"beforePoints.count %lu afterPoints.count %lu",
+                     [beforePoints count], [equalOrAfterPoints count]);
+            // Interval queries return points sorted in ascending order
+            // So we either return the last point before or the first point after
+            long beforeCount = [beforePoints count];
+            if (beforeCount > 0) { // last point before
+                return beforePoints[beforeCount - 1];
+            } else { // first point after
+                return equalOrAfterPoints[0];
+            }
         }
-        return firstLocArray;
+    }
+}
+
+- (void) splitArray:(NSArray*)inArray atTs:(double)ts
+           beforePoints:(NSMutableArray*)beforePoints afterPoints:(NSMutableArray*)equalOrAfterPoints
+{
+    for (int i = 0; i < [inArray count]; i++) {
+        SimpleLocation* currLoc = inArray[i];
+        if (currLoc.ts < ts) {
+            [beforePoints addObject:currLoc];
+        } else {
+            [equalOrAfterPoints addObject:currLoc];
+        }
     }
 }
 

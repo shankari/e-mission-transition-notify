@@ -21,6 +21,7 @@ import org.json.JSONObject;
  * Importing dependencies from the notification plugin
  */
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -204,28 +205,22 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
         // for the trip that just ended, the second will be the exited geofence transition that started it,
         // and the third (if present) will be the stopped_moving transition before that
         Transition[] lastThreeTransitions = UserCacheFactory.getUserCache(context).getLastMessages(
-                R.string.key_usercache_transition, 3, Transition.class);
-        SimpleLocation[] firstLocArray = getFirstLocation(context, lastThreeTransitions);
+                R.string.key_usercache_transition, 2, Transition.class);
+        SimpleLocation firstLoc = getFirstLocation(context, lastThreeTransitions);
 
-        if (firstLocArray.length == 0) {
-            Log.e(context, TAG, "Found no locations while ending trip!");
-            throw new RuntimeException("Found no locations while ending trip!");
-        }
-
-        SimpleLocation firstLoc = firstLocArray[0];
-        retData.put("start_ts", ((double) currTime) / 1000);
+        retData.put("start_ts", firstLoc.getTs());
         retData.put("start_lat", firstLoc.getLatitude());
         retData.put("start_lng", firstLoc.getLongitude());
         return retData;
     }
 
-    private SimpleLocation[] getFirstLocation(Context context, Transition[] lastThreeTransitions) {
+    private SimpleLocation getFirstLocation(Context context, Transition[] lastThreeTransitions) {
         if (BuildConfig.DEBUG) {
             Log.d(context, TAG, "number of transitions = "+lastThreeTransitions.length);
             if (lastThreeTransitions.length == 0) {
                 throw new RuntimeException("found no transitions at trip end");
             }
-            if (lastThreeTransitions.length > 3) {
+            if (lastThreeTransitions.length > 2) {
                 throw new RuntimeException("found too many transitions "
                         +lastThreeTransitions.length+ " at trip end");
             }
@@ -233,47 +228,79 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
                 throw new RuntimeException("lastTransition is "+lastThreeTransitions[0].getTransition()+" NOT stopped_moving");
             }
         }
-        if ((lastThreeTransitions.length == 2) || (lastThreeTransitions.length == 3)) {
+        if (lastThreeTransitions.length == 2) {
             Transition startTransition = lastThreeTransitions[1];
             if (startTransition.getTransition().equals(context.getString(R.string.transition_exited_geofence))) {
-                UserCache.TimeQuery tq = new UserCache.TimeQuery("write_ts", 0, startTransition.getTs());
-                if (lastThreeTransitions.length == 3) {
-                    Log.d(context, TAG, "Prior trip not yet pushed, querying from its end instead...");
-                    Transition beforeStartTransition = lastThreeTransitions[2];
-                    tq = new UserCache.TimeQuery("write_ts", beforeStartTransition.getTs(), startTransition.getTs());
-                }
+                UserCache.TimeQuery tq = new UserCache.TimeQuery("write_ts",
+                        startTransition.getTs() - 5 * 60, //
+                        startTransition.getTs() + 5 * 60);
+
                 SimpleLocation[] firstLocArray = UserCacheFactory.getUserCache(context).getSensorDataForInterval(
                         R.string.key_usercache_filtered_location, tq, SimpleLocation.class);
 
-                if (firstLocArray.length == 0) {
+                if (firstLocArray.length == 0) { // no locations found, switch to default
                     Log.d(context, TAG, "Found no locations before exiting geofence while ending trip!");
-                    firstLocArray = getDefaultLocations(context);
-                    if (firstLocArray.length == 0) {
-                        throw new RuntimeException("Found no locations while ending trip");
-                    }
-                    SimpleLocation firstLoc = firstLocArray[0];
+                    SimpleLocation firstLoc = getDefaultLocation(context);
                     if (firstLoc.getTs() < startTransition.getTs()) {
                         throw new RuntimeException("firstLocArray[0].ts "+firstLoc.getTs()
                             +" < startTransition.ts "+startTransition.getTs());
                     }
+                    return firstLoc;
+                } else {
+                    // There are points around the start transition
+                    // Return the last point before (preferable) or the first point after
+                    ArrayList<SimpleLocation> beforePoints = new ArrayList<SimpleLocation>();
+                    ArrayList<SimpleLocation> equalOrAfterPoints = new ArrayList<SimpleLocation>();
+                    splitArray(firstLocArray, startTransition.getTs(), beforePoints, equalOrAfterPoints);
+                    if (beforePoints.size() == 0 && equalOrAfterPoints.size() == 0) {
+                        throw new RuntimeException("beforePoints.size = "+beforePoints.size()
+                            + "afterPoints.size = "+equalOrAfterPoints.size());
                 }
-                return firstLocArray;
+
+                    int beforeSize = beforePoints.size();
+                    if (beforeSize > 0) {
+                        return beforePoints.get(beforeSize - 1);
             } else {
+                        return equalOrAfterPoints.get(0);
+                    }
+                }
+            } else { // there were at least two transitions in the cache, but the second one
+                // was not a geofence exit
                 Log.d(context, TAG, "startTransition is "+startTransition.getTransition()
                     +" not "+context.getString(R.string.transition_exited_geofence));
-                return getDefaultLocations(context);
+                return getDefaultLocation(context);
             }
         } else {
             // Not enough transitions (have only one transition, presumably the stopping one)
-            return getDefaultLocations(context);
+            return getDefaultLocation(context);
         }
     }
 
-    private SimpleLocation[] getDefaultLocations(Context context) {
-        return UserCacheFactory.getUserCache(context).getFirstSensorData(
+    private void splitArray(SimpleLocation[] inArray, double ts,
+                                      ArrayList<SimpleLocation> beforePoints,
+                                      ArrayList<SimpleLocation> equalOrAfterPoints) {
+        for (int i = 0; i < inArray.length; i++) {
+            SimpleLocation currLoc = inArray[i];
+            if (currLoc.getTs() < ts) {
+                beforePoints.add(currLoc);
+            } else {
+                equalOrAfterPoints.add(currLoc);
+            }
+        }
+    }
+
+    private SimpleLocation getDefaultLocation(Context context) {
+        SimpleLocation[] firstLocArray = UserCacheFactory.getUserCache(context).getFirstSensorData(
                 R.string.key_usercache_filtered_location,
                 1,
                 SimpleLocation.class);
+
+        if (firstLocArray.length == 0) {
+            Log.e(context, TAG, "Found no locations while ending trip!");
+            throw new RuntimeException("Found no locations while ending trip!");
+        }
+
+        return firstLocArray[0];
     }
 
     private void mergeObjects(JSONObject existing, JSONObject autogen) throws JSONException {
