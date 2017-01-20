@@ -150,7 +150,12 @@
     
     NSArray* lastFiveTransitions = [[BuiltinUserCache database] getLastMessage:@"key.usercache.transition" nEntries:5 wrapperClass:[Transition class]];
     Transition* endTransition = lastFiveTransitions[0];
+    if (![endTransition.transition isEqualToString:CFCTransitionTripEndDetected]) {
+        [LocalNotificationManager addNotification:[NSString stringWithFormat:@"endTransition = %@, notified before save?", endTransition.transition]];
+    }
+    /*
     NSAssert([endTransition.transition isEqualToString:CFCTransitionTripEndDetected], @"lastTransition is %@, NOT TRIP_END_DETECTED", endTransition.transition);
+    */
     
     Transition* startTransition;
     Transition* beforeStartTransition;
