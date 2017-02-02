@@ -107,11 +107,11 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
         }
 
         if (eventName.equals(context.getString(R.string.transition_stop_tracking))) {
-                postNativeAndNotify(context, TRACKING_STOPPED, null);
+                postNativeAndNotify(context, TRACKING_STOPPED, new JSONObject());
         }
 
         if (eventName.equals(context.getString(R.string.transition_start_tracking))) {
-                postNativeAndNotify(context, TRACKING_STARTED, null);
+                postNativeAndNotify(context, TRACKING_STARTED, new JSONObject());
             }
         } catch (JSONException e) {
             e.printStackTrace();
