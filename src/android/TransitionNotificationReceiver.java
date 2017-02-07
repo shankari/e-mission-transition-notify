@@ -103,8 +103,10 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
 
         if (eventName.equals(context.getString(R.string.transition_stopped_moving))) {
                 JSONObject autogenData = getTripStartEndData(context);
+                if (autogenData != null) {
                 postNativeAndNotify(context, TRIP_ENDED, autogenData);
         }
+            }
 
         if (eventName.equals(context.getString(R.string.transition_stop_tracking))) {
                 postNativeAndNotify(context, TRACKING_STOPPED, new JSONObject());
@@ -192,8 +194,13 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
         if (BuildConfig.DEBUG) {
             if (lastLocArray.length != 1) {
                 Log.e(context, TAG, "lastLocArray = "+lastLocArray.length+" while generating trip start event");
-                throw new RuntimeException("lastLocArray = "+lastLocArray.length+" while generating trip start event");
+                // throw new RuntimeException("lastLocArray = "+lastLocArray.length+" while generating trip start event");
             }
+            }
+
+        if (lastLocArray.length == 0) {
+            Log.e(context, TAG, "no locations found at trip end, skipping notification");
+            return null;
         }
         SimpleLocation lastLoc = lastLocArray[0];
         retData.put("end_ts", lastLoc.getTs());
