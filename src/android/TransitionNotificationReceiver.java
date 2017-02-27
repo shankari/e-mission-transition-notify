@@ -211,9 +211,9 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
         // Since the transitions are sorted in reverse order, we expect that the first will be the stopped moving transition
         // for the trip that just ended, the second will be the exited geofence transition that started it,
         // and the third (if present) will be the stopped_moving transition before that
-        Transition[] lastThreeTransitions = UserCacheFactory.getUserCache(context).getLastMessages(
+        Transition[] lastTwoTransitions = UserCacheFactory.getUserCache(context).getLastMessages(
                 R.string.key_usercache_transition, 2, Transition.class);
-        SimpleLocation firstLoc = getFirstLocation(context, lastThreeTransitions);
+        SimpleLocation firstLoc = getFirstLocation(context, lastTwoTransitions);
 
         retData.put("start_ts", firstLoc.getTs());
         retData.put("start_lat", firstLoc.getLatitude());
@@ -221,22 +221,20 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
         return retData;
     }
 
-    private SimpleLocation getFirstLocation(Context context, Transition[] lastThreeTransitions) {
+    private SimpleLocation getFirstLocation(Context context, Transition[] lastTwoTransitions) {
         if (BuildConfig.DEBUG) {
-            Log.d(context, TAG, "number of transitions = "+lastThreeTransitions.length);
-            if (lastThreeTransitions.length == 0) {
+            Log.d(context, TAG, "number of transitions = "+lastTwoTransitions.length);
+            if (lastTwoTransitions.length == 0) {
                 throw new RuntimeException("found no transitions at trip end");
             }
-            if (lastThreeTransitions.length > 2) {
+            if (lastTwoTransitions.length > 2) {
                 throw new RuntimeException("found too many transitions "
-                        +lastThreeTransitions.length+ " at trip end");
+                        +lastTwoTransitions.length+ " at trip end");
             }
-            if (!lastThreeTransitions[0].getTransition().equals(context.getString(R.string.transition_stopped_moving))) {
-                throw new RuntimeException("lastTransition is "+lastThreeTransitions[0].getTransition()+" NOT stopped_moving");
             }
-        }
-        if (lastThreeTransitions.length == 2) {
-            Transition startTransition = lastThreeTransitions[1];
+
+        if (lastTwoTransitions.length <= 2) {
+            Transition startTransition = getStartTransition(lastTwoTransitions);
             if (startTransition.getTransition().equals(context.getString(R.string.transition_exited_geofence))) {
                 UserCache.TimeQuery tq = new UserCache.TimeQuery("write_ts",
                         startTransition.getTs() - 5 * 60, //
@@ -280,6 +278,24 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
         } else {
             // Not enough transitions (have only one transition, presumably the stopping one)
             return getDefaultLocation(context);
+        }
+    }
+
+    private Transition getStartTransition(Transition[] lastTwoTransitions) {
+        /*
+         Simple function here - no error checking since we have done that already
+         * Small if - that's all we need
+         */
+        if (lastTwoTransitions.length == 2) {
+            return lastTwoTransitions[1];
+        } else {
+            if (BuildConfig.DEBUG) {
+                if (lastTwoTransitions.length > 2) {
+                    throw new RuntimeException("last two transitions.length is " + lastTwoTransitions.length
+                            + " should be < 2");
+                }
+            }
+            return lastTwoTransitions[0];
         }
     }
 
