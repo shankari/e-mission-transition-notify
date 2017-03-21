@@ -214,6 +214,10 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
         Transition[] lastTwoTransitions = UserCacheFactory.getUserCache(context).getLastMessages(
                 R.string.key_usercache_transition, 2, Transition.class);
         SimpleLocation firstLoc = getFirstLocation(context, lastTwoTransitions);
+        if(firstLoc == null) {
+            Log.e(context, TAG, "error determining first location, skipping notification");
+            return null;
+        }
 
         retData.put("start_ts", firstLoc.getTs());
         retData.put("start_lat", firstLoc.getLatitude());
@@ -225,11 +229,13 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
         if (BuildConfig.DEBUG) {
             Log.d(context, TAG, "number of transitions = "+lastTwoTransitions.length);
             if (lastTwoTransitions.length == 0) {
-                throw new RuntimeException("found no transitions at trip end");
+                Log.e(context, TAG, "found no transitions at trip end, skipping notification");
+                return null;
             }
             if (lastTwoTransitions.length > 2) {
-                throw new RuntimeException("found too many transitions "
-                        +lastTwoTransitions.length+ " at trip end");
+                Log.e(context, TAG, "found too many transitions "
+                        +lastTwoTransitions.length+ " at trip end, skipping notification");
+                return null;
             }
             }
 
