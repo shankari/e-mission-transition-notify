@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <plugin xmlns="http://www.phonegap.com/ns/plugins/1.0"
         id="edu.berkeley.eecs.emission.cordova.transitionnotify"
-        version="0.0.1">
+        version="1.0.0">
 
   <name>TransitionNotification</name>
   <description>Transition notification. Specially good for trip start and trip end notifications </description>
@@ -12,7 +12,9 @@
     <engine name="cordova" version=">=3.6.0"/>
   </engines>
 
-  <asset src="www/transitionnotify.js" target="js/transitionnotify.js"/>
+  <asset src="www/ui/ionic/templates/main-transition-notify-settings.html" target="templates/control/main-transition-notify-settings.html"/>
+  <asset src="www/ui/ionic/templates/transition-notify-display-detail.html" target="templates/control/transition-notify-display-detail.html"/>
+  <asset src="www/ui/ionic/js/transition-notify-settings.js" target="js/control/transition-notify-settings.js"/>
 
   <js-module src="www/transitionnotify.js" name="transitionnotify">
     <clobbers target="cordova.plugins.BEMTransitionNotification" />
