@@ -27,7 +27,8 @@ angular.module('emission.main.control.tnotify', [])
                 function(acc, val) {
                 return acc.concat(val);
             });
-            return combinedTransitionNotifyEnable.map(ctnh.formatConfigForDisplay);
+            // return combinedTransitionNotifyEnable.map(ctnh.formatConfigForDisplay);
+            return combinedTransitionNotifyEnable;
         })
     };
 
@@ -75,6 +76,9 @@ angular.module('emission.main.control.tnotify', [])
         return !(angular.isUndefined(foundMuted));
     }
 
+    /*
+     * Currently unused - we're displaying a real template, not just key-value pairs
+     */
     ctnh.formatConfigForDisplay = function(tnce) {
         return {'key': tnce.transitionName + " "+tnce.id + " "+tnce.title,
                 'val': tnce.enabled};
