@@ -10,6 +10,7 @@ angular.module('emission.main.control.tnotify', [])
     ];
     ctnh.new_configList = [];
     ctnh.transition2configList = [];
+    ctnh.mergedTransitionNotifyEnableList = [];
     ctnh.settingsPopup = {};
 
     /* 
@@ -23,12 +24,12 @@ angular.module('emission.main.control.tnotify', [])
         return Promise.all(promiseList).then(function(resultList){
             ctnh.transition2configList = resultList;
             var notifyEnableLists = resultList.filter(non_null).map(ctnh.config2notifyList);
-            var combinedTransitionNotifyEnable = notifyEnableLists.reduce(
+            ctnh.mergedTransitionNotifyEnableList = notifyEnableLists.reduce(
                 function(acc, val) {
                 return acc.concat(val);
             });
-            // return combinedTransitionNotifyEnable.map(ctnh.formatConfigForDisplay);
-            return combinedTransitionNotifyEnable;
+            // return mergedTransitionNotifyEnable.map(ctnh.formatConfigForDisplay);
+            return ctnh.mergedTransitionNotifyEnableList;
         })
     };
 
@@ -93,16 +94,16 @@ angular.module('emission.main.control.tnotify', [])
         new_scope.saveAndReload = ctnh.saveAndReload;
         new_scope.isIOS = ionic.Platform.isIOS;
         new_scope.isAndroid = ionic.Platform.isAndroid;
-        new_scope.setAccuracy = ctnh.setAccuracy;
+        new_scope.toggleEnable = ctnh.toggleEnable;
         return new_scope;
     }
 
     ctnh.editConfig = function($event) {
-        // TODO: replace with angular.clone
-        ctnh.new_config = JSON.parse(JSON.stringify(ctnh.config));
+        ctnh.editedDisplayConfig = angular.copy(ctnh.mergedTransitionNotifyEnableList);
+        ctnh.toggledSet = new Set();
         var popover_scope = getPopoverScope();
-        popover_scope.new_config = ctnh.new_config;
-        $ionicPopover.fromTemplateUrl('templates/control/main-collect-settings.html', {
+        popover_scope.display_config = ctnh.editedDisplayConfig;
+        $ionicPopover.fromTemplateUrl('templates/control/main-transition-notify-settings.html', {
             scope: popover_scope
         }).then(function(popover) {
             ctnh.settingsPopup = popover;
@@ -113,7 +114,9 @@ angular.module('emission.main.control.tnotify', [])
     }
 
     ctnh.saveAndReload = function() {
-        console.log("new config = "+ctnh.new_config);
+        console.log("new config = "+ctnh.editedDisplayConfig);
+        ctnh.mergedTransitionNotifyEnableList = ctnh.editedDisplayConfig;
+        /*
         ctnh.setConfig(ctnh.new_config)
         .then(function(){
             ctnh.config = ctnh.new_config;
@@ -121,6 +124,7 @@ angular.module('emission.main.control.tnotify', [])
         }, function(err){
             console.log("setConfig Error: " + err);
         });
+        */
         ctnh.settingsPopup.hide();
         ctnh.settingsPopup.remove();
     };
@@ -129,20 +133,9 @@ angular.module('emission.main.control.tnotify', [])
      * Edit helpers for values that selected from actionSheets
      */
 
-    ctnh.setAccuracy= function() {
-        var accuracyActions = [];
-        for (name in ctnh.accuracyOptions) {
-            accuracyActions.push({text: name, value: ctnh.accuracyOptions[name]});
-        }
-        $ionicActionSheet.show({
-            buttons: accuracyActions,
-            titleText: "Select accuracy",
-            cancelText: "Cancel",
-            buttonClicked: function(index, button) {
-                ctnh.new_config.accuracy = button.value;
-                return true;
-            }
-        });
+    ctnh.toggleEnable = function(entry) {
+        console.log(JSON.stringify(entry));
+        ctnh.toggledSet.add(entry);
     };
 
     ctnh.forceState = function() {
