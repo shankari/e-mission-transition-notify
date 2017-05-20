@@ -40,8 +40,11 @@ angular.module('emission.main.control.tnotify', [])
     /*
      * Output of this function is a map of the form:
      * { transitionName: "trip_ended",
-         id: "737678",
-         title: "Trip just ended",
+         notifyOptions: {
+            id: "737678",
+            title: "Trip just ended",
+            ...
+         },
          enabled: true/false
      * }
      */
@@ -50,13 +53,12 @@ angular.module('emission.main.control.tnotify', [])
         var configList = configWithMetadata.data[CONFIG_LIST];
         var mutedList = configWithMetadata.data[MUTED_LIST];
         var enabledList = configList.map(function(config, i) {
-            return isMutedEntry(config.id, mutedList);
+            return !(isMutedEntry(config.id, mutedList));
         });
         var retVal = configList.map(function(config, i) {
             return {
                 transitionName: configWithMetadata.metadata.key,
-                id: config.id,
-                title: "Trip just ended",
+                notifyOptions: config,
                 enabled: enabledList[i]
             };
         });
@@ -81,8 +83,8 @@ angular.module('emission.main.control.tnotify', [])
      * Currently unused - we're displaying a real template, not just key-value pairs
      */
     ctnh.formatConfigForDisplay = function(tnce) {
-        return {'key': tnce.transitionName + " "+tnce.id + " "+tnce.title,
-                'val': tnce.enabled};
+        return {'key': tnce.transitionName + " "+tnce.notifyOptions.id +
+                " "+tnce.notifyOptions.title, 'val': tnce.enabled};
     }
 
     /* 
@@ -115,16 +117,22 @@ angular.module('emission.main.control.tnotify', [])
 
     ctnh.saveAndReload = function() {
         console.log("new config = "+ctnh.editedDisplayConfig);
-        ctnh.mergedTransitionNotifyEnableList = ctnh.editedDisplayConfig;
-        /*
-        ctnh.setConfig(ctnh.new_config)
-        .then(function(){
-            ctnh.config = ctnh.new_config;
+        var promiseList = Array.from(ctnh.toggledSet)
+                                .map(function(currConfigWrapper) {
+            // TODO: I think we can use apply here since these are
+            // basically the fields.
+            return ctnh.setEnabled(currConfigWrapper.transitionName, 
+                currConfigWrapper.notifyOptions, currConfigWrapper.enabled);
+        });
+        Promise.all(promiseList).then(function(resultList) {
+            // reset temporary state after all promises are resolved.
+            ctnh.mergedTransitionNotifyEnableList = ctnh.editedDisplayConfig;
+            ctnh.toggledSet = [];
             $rootScope.$broadcast('control.update.complete', 'collection config');
-        }, function(err){
+        }).catch(function(error) {
             console.log("setConfig Error: " + err);
         });
-        */
+
         ctnh.settingsPopup.hide();
         ctnh.settingsPopup.remove();
     };
@@ -230,6 +238,14 @@ angular.module('emission.main.control.tnotify', [])
 
     ctnh.getConfigForTransition = function(transitionName, withMetadata) {
       return window.cordova.plugins.BEMUserCache.getLocalStorage(transitionName, withMetadata);
+    };
+
+    ctnh.setEnabled = function(transitionName, configData, enableState) {
+      if (enableState == true) {
+        return window.cordova.plugins.BEMTransitionNotification.enableEventListener(transitionName, configData);
+      } else {
+        return window.cordova.plugins.BEMTransitionNotification.disableEventListener(transitionName, configData);
+      }
     };
 
     return ctnh;
