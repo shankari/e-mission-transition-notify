@@ -28,6 +28,16 @@ var TransitionNotification = {
             exec(resolve, reject, "TransitionNotification", "removeEventListener", [eventName, notifyOptions]);
         });
     },
+    enableEventListener: function(eventName, notifyOptions) {
+        return new Promise(function(resolve, reject) {
+            exec(resolve, reject, "TransitionNotification", "enableEventListener", [eventName, notifyOptions]);
+        });
+    },
+    disableEventListener: function(eventName, notifyOptions) {
+        return new Promise(function(resolve, reject) {
+            exec(resolve, reject, "TransitionNotification", "disableEventListener", [eventName, notifyOptions]);
+        });
+    },
     /*
      * The iOS local notification code.
      * See 
