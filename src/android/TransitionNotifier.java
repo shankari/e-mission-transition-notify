@@ -80,12 +80,16 @@ public class TransitionNotifier extends CordovaPlugin {
                 currList = new JSONArray();
             configWrapper.put(listName, currList);
                             } else {
-            currList = configWrapper.getJSONArray(listName);
+            currList = configWrapper.optJSONArray(listName);
+            if (currList == null) {
+                currList = new JSONArray();
+                configWrapper.put(listName, currList);
+            }
                             }
 
             if(BuildConfig.DEBUG) {
-            if (configWrapper != null && currList != null &&
-                    configWrapper.getJSONArray(listName) == currList) {
+            if (configWrapper == null || currList == null &&
+                    configWrapper.getJSONArray(listName) != currList) {
                 throw new RuntimeException("configWrapper = "+configWrapper+" currList = "+currList);
             }
                         }
@@ -124,8 +128,28 @@ public class TransitionNotifier extends CordovaPlugin {
                 currList.put(existingIndex, null);
                 currList = filterNulls(ctxt, currList);
                 if (currList.length() == 0) { // list size is now zero, can remove the entry
+                    // Let us think about what we want to happen here. One thought might be that we want to
+                    // remove the entry iff both lists are empty. But then you could run into situations in which
+                    // there was a notification, it was muted, and then it was removed. Because the muted list still
+                    // had an entry, we would keep the (zombie) entry around.
+                    // So it seems like we should actually look at the list and treat the config list and the muted list
+                    // differently. Alternatively, we could document that you always need to unmute a list before deleting it
+                    // but that places additional (unnecessary) burden on the user.
+                    // So let's treat them separately for now and fix later if it is a problem
+                    if (listName.equals(CONFIG_LIST_KEY)) {
                     Log.d(ctxt, TAG, "list size is now, zero, removing entry for event "+eventName);
                     UserCacheFactory.getUserCache(ctxt).removeLocalStorage(eventName);
+                } else {
+                        if (BuildConfig.DEBUG) {
+                            if (!listName.equals(MUTED_LIST_KEY)) {
+                                throw new RuntimeException("listName = "+listName+" expected "+MUTED_LIST_KEY);
+                            }
+                            Log.d(ctxt, TAG, "muted list size is now 0, removing list "+MUTED_LIST_KEY
+                                    +" for event "+eventName);
+                            configWrapper.remove(listName);
+                            UserCacheFactory.getUserCache(ctxt).putLocalStorage(eventName, configWrapper);
+                        }
+                    }
                 } else {
                     Log.d(ctxt, TAG, "saving list with size "+currList.length());
                     UserCacheFactory.getUserCache(ctxt).putLocalStorage(eventName, configWrapper);
