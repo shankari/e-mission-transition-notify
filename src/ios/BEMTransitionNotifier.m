@@ -17,6 +17,8 @@
 #define CONFIG_LIST_KEY @"config_list"
 #define MUTED_LIST_KEY @"muted_list"
 
+#define isNSNull(value) [value isKindOfClass:[NSNull class]]
+
 @interface BEMTransitionNotifier () {
   // Member variables go here.
 }
@@ -380,13 +382,14 @@
     }
 }
 
+
 - (void)addEventListener:(CDVInvokedUrlCommand*)command
 {
     CDVPluginResult* pluginResult;
     
     __block NSString* eventName = command.arguments[0];
     
-    if (eventName == nil || [eventName length] == 0) {
+    if (isNSNull(eventName)|| [eventName length] == 0) {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"eventName is null or empty"];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         return;
@@ -394,7 +397,7 @@
 
     __block NSDictionary* localNotifyConfig = command.arguments[1];
         
-    if (localNotifyConfig == nil || [localNotifyConfig count] == 0) {
+    if (isNSNull(localNotifyConfig) || [localNotifyConfig count] == 0) {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"localNotifyConfig is null or empty"];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         return;
@@ -416,7 +419,7 @@
 
     __block NSString* eventName = command.arguments[0];
     
-    if (eventName == nil || [eventName length] == 0) {
+    if (isNSNull(eventName) || [eventName length] == 0) {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"eventName is null or empty"];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         return;
@@ -424,7 +427,7 @@
     
     __block NSDictionary* localNotifyConfig = command.arguments[1];
     
-    if (localNotifyConfig == nil || [localNotifyConfig count] == 0) {
+    if (isNSNull(localNotifyConfig) || [localNotifyConfig count] == 0) {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"localNotifyConfig is null or empty"];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         return;
@@ -443,7 +446,7 @@
     
     __block NSString* eventName = command.arguments[0];
     
-    if (eventName == nil || [eventName length] == 0) {
+    if (isNSNull(eventName) || [eventName length] == 0) {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"eventName is null or empty"];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         return;
@@ -451,7 +454,7 @@
     
     __block NSDictionary* localNotifyConfig = command.arguments[1];
     
-    if (localNotifyConfig == nil || [localNotifyConfig count] == 0) {
+    if (isNSNull(localNotifyConfig) || [localNotifyConfig count] == 0) {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"localNotifyConfig is null or empty"];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         return;
@@ -471,15 +474,15 @@
     
     __block NSString* eventName = command.arguments[0];
     
-    if (eventName == nil || [eventName length] == 0) {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"eventName is null or empty"];
+    if (isNSNull(eventName) || eventName == nil || [eventName length] == 0) {
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"eventName is null"];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         return;
     }
     
     __block NSDictionary* localNotifyConfig = command.arguments[1];
     
-    if (localNotifyConfig == nil || [localNotifyConfig count] == 0) {
+    if (isNSNull(localNotifyConfig) || localNotifyConfig == nil || [localNotifyConfig count] == 0) {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"localNotifyConfig is null or empty"];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         return;
