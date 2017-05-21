@@ -16,7 +16,10 @@ var exec = require("cordova/exec")
  */
 
 var TransitionNotification = {
+    TRIP_START: 'trip_started',
     TRIP_END: 'trip_ended',
+    TRACKING_STARTED: 'tracking_started',
+    TRACKING_STOPPED: 'tracking_stopped',
 
     addEventListener: function(eventName, notifyOptions) {
         return new Promise(function(resolve, reject) {
