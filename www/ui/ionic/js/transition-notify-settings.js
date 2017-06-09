@@ -117,8 +117,11 @@ angular.module('emission.main.control.tnotify', [])
 
     ctnh.saveAndReload = function() {
         console.log("new config = "+ctnh.editedDisplayConfig);
-        var promiseList = Array.from(ctnh.toggledSet)
-                                .map(function(currConfigWrapper) {
+        var toggledArray = [];
+        ctnh.toggledSet.forEach(function(v) {
+            toggledArray.push(v);
+        });
+        var promiseList = toggledArray.map(function(currConfigWrapper) {
             // TODO: I think we can use apply here since these are
             // basically the fields.
             return ctnh.setEnabled(currConfigWrapper.transitionName, 
