@@ -275,8 +275,14 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
                     Log.d(context, TAG, "Found no locations before exiting geofence while ending trip!");
                     SimpleLocation firstLoc = getDefaultLocation(context);
                     if (firstLoc.getTs() < startTransition.getTs()) {
+                        if (BuildConfig.DEBUG) {
                         throw new RuntimeException("firstLocArray[0].ts "+firstLoc.getTs()
                             +" < startTransition.ts "+startTransition.getTs());
+                        } else {
+                            // Explanation for returning null at
+                            // https://github.com/e-mission/e-mission-transition-notify/issues/12#issuecomment-322535726
+                            return null;
+                        }
                     }
                     return firstLoc;
                 } else {
