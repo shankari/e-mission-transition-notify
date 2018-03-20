@@ -1,9 +1,9 @@
 {
-  "name": "em-cordova-connection-settings",
+  "name": "em-cordova-transition-notify",
   "version": "1.1.1",
   "description": "Simple package that stores all the connection settings that need to be configured",
   "cordova": {
-    "id": "em-cordova-connection-settings",
+    "id": "em-cordova-transition-notify",
     "platforms": [
       "android",
       "ios",
@@ -12,12 +12,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/e-mission/cordova-connection-settings.git"
+    "url": "git+https://github.com/e-mission/e-mission-transition-notify.git"
   },
   "keywords": [
     "emission",
-    "connection",
-    "settings",
+    "transition",
+    "notify",
     "ecosystem:cordova",
     "cordova-ios",
     "cordova-android"
@@ -43,8 +43,8 @@
   "author": "K. Shankari",
   "license": "BSD 3-clause",
   "bugs": {
-    "url": "https://github.com/e-mission/cordova-connection-settings/issues"
+    "url": "https://github.com/e-mission/e-mission-transition-notify/issues"
   },
-  "homepage": "https://e-mission/cordova-connection-settings"
+  "homepage": "https://github.com/e-mission/e-mission-transition-notify"
 }
 
