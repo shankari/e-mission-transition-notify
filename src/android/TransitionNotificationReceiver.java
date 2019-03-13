@@ -35,6 +35,8 @@ import de.appplant.cordova.plugin.notification.Manager;
  */
 import edu.berkeley.eecs.emission.BuildConfig;
 import edu.berkeley.eecs.emission.R;
+
+
 import edu.berkeley.eecs.emission.cordova.tracker.wrapper.SimpleLocation;
 import edu.berkeley.eecs.emission.cordova.tracker.wrapper.Transition;
 import edu.berkeley.eecs.emission.cordova.unifiedlogger.Log;
@@ -129,6 +131,7 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
         Intent genericTransitionIntent = new Intent();
         genericTransitionIntent.setAction(genericTransition);
         genericTransitionIntent.putExtras(jsonToBundle(autogenData));
+        genericTransitionIntent.setPackage(context.getPackageName());
         context.sendBroadcast(genericTransitionIntent);
         notifyEvent(context, genericTransition, autogenData);
             }
