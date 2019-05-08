@@ -133,7 +133,7 @@ angular.module('emission.main.control.tnotify', [])
             ctnh.toggledSet = [];
             $rootScope.$broadcast('control.update.complete', 'collection config');
         }).catch(function(error) {
-            console.log("setConfig Error: " + err);
+            window.logger.Logger.displayError("Error while setting transition config", error);
         });
 
         ctnh.settingsPopup.hide();
