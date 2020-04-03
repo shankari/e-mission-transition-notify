@@ -52,6 +52,11 @@
 - (void)fireGenericTransitionFor:(NSString*) transition withUserInfo:(NSDictionary*) userInfo {
     [LocalNotificationManager addNotification:[NSString stringWithFormat:@"Received platform-specific notification %@", transition] showUI:FALSE];
 
+    TripDiaryStateMachine* instance = [TripDiaryStateMachine instance];
+    if (instance == NULL) {
+        [LocalNotificationManager addNotification:@"Unable to access state machine instance, must be recursive call on startup, bailing"];
+        return;
+    }
     if ([TripDiaryStateMachine instance].currState == kWaitingForTripStartState &&
             ([transition isEqualToString:CFCTransitionExitedGeofence] ||
              [transition isEqualToString:CFCTransitionVisitEnded])) {
