@@ -158,6 +158,12 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
                        if (currData == null) {
                            currData = new JSONObject();
                            currNotifyConfig.put("data", currData);
+                           JSONObject currTrigger = new JSONObject();
+                           currTrigger.put("type", "calendar");
+                           currNotifyConfig.put("trigger", currTrigger);
+                           JSONObject pb = new JSONObject();
+                           pb.put("enabled", false);
+                           currNotifyConfig.put("progressBar", pb);
                        }
                        mergeObjects(currData, autogenData);
                    }
