@@ -292,7 +292,7 @@
     }
     NSUInteger existingIndex = [currList indexOfObjectPassingTest:^BOOL(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
         // Note that the id is a long so == works. If we assume that it is a string, we would need to use isEqualToString
-        return obj[@"id"] == localNotifyConfig[@"id"];
+        return [obj[@"id"] isEqualToNumber:localNotifyConfig[@"id"]];
     }];
     return existingIndex;
 }
@@ -352,7 +352,7 @@
     if (configWrapper != NULL) { // There is an existing entry for this event
         NSMutableArray* currList = configWrapper[listName];
         NSUInteger existingIndex = [self findIndex:localNotifyConfig fromList:currList];
-        if (existingIndex != -1) { // There is an existing entry for this ID
+        if (existingIndex != NSNotFound) { // There is an existing entry for this ID
             [LocalNotificationManager addNotification:[NSString stringWithFormat:@"removed obsolete notification at %lu", existingIndex]];
             [currList removeObjectAtIndex:existingIndex];
             if ([currList count] == 0) { // list size is now zero
