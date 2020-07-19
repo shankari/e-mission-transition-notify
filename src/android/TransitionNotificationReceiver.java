@@ -332,7 +332,7 @@ public class TransitionNotificationReceiver extends BroadcastReceiver {
          * Small if - that's all we need
          */
         if (lastTwoTransitions.length == 2) {
-            return lastTwoTransitions[1];
+            return lastTwoTransitions[0];
         } else {
             if (BuildConfig.DEBUG) {
                 if (lastTwoTransitions.length > 2) {
